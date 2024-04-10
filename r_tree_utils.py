@@ -1,8 +1,9 @@
 import math
 import numpy as np
-import matplotlib.pyplot as plt
+from colorutils import Color
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
+import PyQt5
 from QuickHull.hull import QuickHull
 
 
@@ -27,25 +28,16 @@ class Bound:
         return
 
 
-class nCircle(Bound):
+class NCircle(Bound):
 
     def __init__(self, center, radius):
         super().__init__(len(center))
         self.center = center
         self.radius = radius
 
-    def get_sphere():
-
-        phi, theta = np.mgrid[0:np.pi:100j, 0:2 * np.pi:100j]
-        x = np.cos(theta) * np.sin(phi)
-        y = np.sin(theta) * np.sin(phi)
-        z = np.cos(phi)
-
-        return x, y, z
-
     def overlap(self, other):
 
-        if type(other) is nCircle:
+        if type(other) is NCircle:
             return np.linalg.norm(self.center - other.center) >= self.radius + other.radius
 
         elif type(other) is Rect:
@@ -54,22 +46,38 @@ class nCircle(Bound):
         elif type(other) is Cube:
             return Cube.get_dist(other, self.center) <= self.radius
 
-    def plot(self, c, ax):
+    def plot(self, color, view):
 
         if self.dim == 2:
+            circle = PyQt5.QtWidgets.QGraphicsEllipseItem(self.center[0] - self.radius,
+                                                          self.center[1] - self.radius,
+                                                          2 * self.radius,
+                                                          2 * self.radius)
 
-            cc = plt.Circle((self.center[0], self.center[1]), self.radius, fill=False)
-            ax.add_artist(cc)
+            circle.setBrush(pg.mkBrush(color))
+            view.addItem(circle)
 
         elif self.dim == 3:
+            md = gl.MeshData.sphere(rows=10, cols=20, radius=self.radius)
+            c = Color(web=color)
+            rgb = c.rgb
+            p0, p1, p2 = rgb[0], rgb[1], rgb[2]
+            colors = np.ones((md.faceCount(), 4), dtype=float)
+            colors[:, 3] = 0.2
+            colors[:, 2] = np.linspace(p2/255, 1, colors.shape[0])
+            colors[:, 1] = np.linspace(p1/255, 1, colors.shape[0])
+            colors[:, 0] = np.linspace(p0/255, 1, colors.shape[0])
 
-            x, y, z = nCircle.get_sphere()
-            ax.plot_surface(self.radius * x + self.center[0],
-                            self.radius * y + self.center[1],
-                            self.radius * z + self.center[2],
-                            alpha=0.08,
-                            shade=False,
-                            )
+            md.setFaceColors(colors=colors)
+            m1 = gl.GLMeshItem(
+                meshdata=md,
+                smooth=True,
+                shader="balloon",
+                glOptions="additive",
+            )
+
+            m1.translate(self.center[0], self.center[1], self.center[2])
+            view.addItem(m1)
 
     def contains(self, other):
 
@@ -475,6 +483,7 @@ class IndexPointer(Entry):
 
     def __repr__(self):
         return "pt " + f"{self.bound} -> {self.pointer}"
+
 
 
 

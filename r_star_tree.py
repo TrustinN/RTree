@@ -138,16 +138,18 @@ class RTree(object):
         elif self.dim == 3:
             RTree.Bound = RTree.Cube
 
-        self.root = RTree.LeafNode(items=[], covering=None, level=0)
-
-    def plot(self):
+        pg.mkQApp("RTree")
         if self.dim == 2:
-            pg.mkQApp("RTree")
             self.view = pg.plot().getViewBox()
 
         elif self.dim == 3:
-            pg.mkQApp("RTree")
             self.view = gl.GLViewWidget()
+
+        self.root = RTree.LeafNode(items=[], covering=None, level=0)
+
+    def plot(self):
+
+        if self.dim == 3:
             self.view.show()
             mid = self.root.covering.center
             self.view.setCameraPosition(distance=np.linalg.norm(mid))

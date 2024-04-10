@@ -2,16 +2,15 @@ import numpy as np
 import math
 import timeit
 import pyqtgraph as pg
+import pyqtgraph.opengl as gl
 from r_star_tree import RTree
 from r_tree_utils import IndexRecord
 from r_tree_utils import Rect
 from r_tree_utils import Cube
-from r_tree_utils import nCircle
-import matplotlib.pyplot as plt
+from r_tree_utils import NCircle
 
 
 test = 3
-# np.random.seed(623)
 
 if test == 2:
 
@@ -46,10 +45,11 @@ if test == 2:
 
         start = timeit.default_timer()
         found = rtree.Search(scope)
-        scope.plot("#0000ff", rtree.ax)
+        scope.plot("#0000ff", rtree.view)
 
         stop = timeit.default_timer()
         print('Test Search: ', stop - start)
+
         return found
 
     def test_delete(rtree, array):
@@ -73,9 +73,11 @@ if test == 2:
 
         stop = timeit.default_timer()
 
-        plt.plot([nnti[0], p[0]], [nnti[1], p[1]])
         print('Test Nearest: ', stop - start)
         print('closest: ', nnti)
+
+        line = pg.PlotDataItem(np.array([nnti, p]), connect="all")
+        rtree.view.addItem(line)
 
     def test_nearest_naive(array, p):
 
@@ -152,6 +154,8 @@ elif test == 3:
         ir = IndexRecord(b, p)
         nn = rtree.NearestNeighbor(ir)
         nnti = nn.tuple_identifier
+        line = gl.GLLinePlotItem(pos=np.array([nnti, p]))
+        rtree.view.addItem(line)
 
         stop = timeit.default_timer()
         print('Test Nearest: ', stop - start)
@@ -178,19 +182,25 @@ elif test == 3:
 
 
 rtree = RTree(20, dim=test)
-p = test_insert(rtree, 1500)
+p = test_insert(rtree, 500)
+
+if test == 2:
+    t_point = np.array([250, 250])
+
+elif test == 3:
+    t_point = np.array([250, 250, 250])
+
+found = test_search(rtree, NCircle(t_point, 300))
+test_delete(rtree, found)
+test_nearest(rtree, t_point)
+# test_nearest_naive only works if test_delete is not run
+test_nearest_naive(p, t_point)
 rtree.plot()
-t_point = np.array([250, 250, 250])
-# found = test_search(rtree, nCircle(t_point, 200))
-# test_delete(rtree, found)
-# test_nearest(rtree, t_point)
-# test_nearest_naive(p, t_point)
 
 
 pg.exec()
 
 
-print("Done!")
 
 
 

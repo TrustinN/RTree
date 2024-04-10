@@ -195,19 +195,11 @@ test_delete(rtree, found)
 test_nearest(rtree, t_point)
 # test_nearest_naive only works if test_delete is not run
 test_nearest_naive(p, t_point)
+
 rtree.plot()
 
 
 pg.exec()
-
-
-
-
-
-
-
-
-
 
 
 

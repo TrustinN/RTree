@@ -4,7 +4,6 @@ from colorutils import Color
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 import PyQt5
-from QuickHull.hull import QuickHull
 
 
 class Bound:
@@ -389,21 +388,62 @@ class Cube(Bound):
         return math.sqrt(x_dist ** 2 + y_dist ** 2 + z_dist ** 2)
 
     def plot(self, color, view):
-        self.hull = QuickHull([np.array([self.min_x, self.min_y, self.min_z]),
-                               np.array([self.max_x, self.min_y, self.min_z]),
-                               np.array([self.min_x, self.max_y, self.min_z]),
-                               np.array([self.min_x, self.min_y, self.max_z]),
-                               np.array([self.max_x, self.max_y, self.min_z]),
-                               np.array([self.min_x, self.max_y, self.max_z]),
-                               np.array([self.max_x, self.min_y, self.max_z]),
-                               np.array([self.max_x, self.max_y, self.max_z]),
-                               ])
+        vertices = [np.array([self.min_x, self.min_y, self.min_z]),  # 0
+                    np.array([self.max_x, self.min_y, self.min_z]),  # 1
+                    np.array([self.min_x, self.max_y, self.min_z]),  # 2
+                    np.array([self.min_x, self.min_y, self.max_z]),  # 3
+                    np.array([self.max_x, self.max_y, self.min_z]),  # 4
+                    np.array([self.min_x, self.max_y, self.max_z]),  # 5
+                    np.array([self.max_x, self.min_y, self.max_z]),  # 6
+                    np.array([self.max_x, self.max_y, self.max_z]),  # 7
+                    ]
 
-        self.hull.plot(color, view)
+        md = gl.MeshData(vertexes=vertices,
+                         faces=np.array([
+                             # bottom plane
+                             [0, 1, 4],
+                             [0, 4, 2],
 
-    def rm_plot(self):
-        if self.hull:
-            self.hull.rm_plot()
+                             # left plane
+                             [0, 1, 6],
+                             [0, 6, 3],
+
+                             # back plane
+                             [0, 2, 5],
+                             [0, 5, 3],
+
+                             # right plane
+                             [2, 7, 5],
+                             [2, 4, 7],
+
+                             # top plane
+                             [3, 7, 5],
+                             [3, 6, 7],
+
+                             # front plane
+                             [4, 6, 1],
+                             [4, 7, 6]
+                             ]),
+                         )
+
+        c = Color(web=color)
+        rgb = c.rgb
+        p0, p1, p2 = rgb[0], rgb[1], rgb[2]
+        colors = np.ones((md.faceCount(), 4), dtype=float)
+        colors[:, 3] = 0.2
+        colors[:, 2] = np.linspace(p2/255, 1, colors.shape[0])
+        colors[:, 1] = np.linspace(p1/255, 1, colors.shape[0])
+        colors[:, 0] = np.linspace(p0/255, 1, colors.shape[0])
+
+        md.setFaceColors(colors=colors)
+        m1 = gl.GLMeshItem(meshdata=md, smooth=False, shader='shaded')
+        m1.setGLOptions('additive')
+        self.p_obj = m1
+        view.addItem(m1)
+
+    def rm_plot(self, view):
+        if self.p_obj:
+            view.removeItem(self.p_obj)
 
     def __str__(self):
         return f"{[self.min_x, self.max_x, self.min_y, self.max_y, self.min_z, self.max_z]}"

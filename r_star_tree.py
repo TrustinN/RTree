@@ -39,41 +39,25 @@ class RTree(object):
 
     class BranchNode(Node):
 
-        def __init__(self, items, covering, level=0, view=None):
-
+        def __init__(self, items, covering, level=0):
             super().__init__(items, covering, level)
-
-            self.view = view
-            if covering.dim >= 3:
-                self.view = None
-
-            if self.view:
-                if self.covering:
-                    covering.plot("#ff0000", self.view)
 
         def add_entry(self, entry):
 
             self.items.append(entry)
 
             if self.covering:
-
-                self.covering.rm_plot()
                 self.covering = RTree.Bound.combine([self.covering, entry.bound])
 
-                if self.view:
-                    self.covering.plot("#ff0000", self.view)
-
         def update_bound(self, bound):
-
-            self.covering.rm_plot()
             self.covering = bound
 
-            if self.view:
-                self.covering.plot("#ff0000", self.view)
+        def plot(self, view):
+            for i in self.items:
+                i.pointer.plot(view)
 
-        def rm_plot(self):
-
-            self.covering.rm_plot()
+            if self.covering.dim < 3:
+                self.covering.plot("#ff0000", view)
 
         def __str__(self):
             string = ""
@@ -89,52 +73,30 @@ class RTree(object):
 
     class LeafNode(Node):
 
-        def __init__(self, items, covering, level=0, view=None):
+        def __init__(self, items, covering, level=0):
 
             super().__init__(items, covering, level)
-            self.view = view
+            self.color = "#" + "".join([random.choice('ABCDEF0123456789') for i in range(6)])
 
-            if self.view:
-                self.color = "#" + "".join([random.choice('ABCDEF0123456789') for i in range(6)])
-
-                if self.covering:
-                    covering.plot("#009b00", self.view)
-
-                for i in self.items:
-                    i.plot(self.color, self.view)
-
-        def plot(self):
-
-            if self.view:
-                for i in self.items:
-                    i.plot(self.color, self.view)
+        def plot(self, view):
+            self.covering.plot("#009b00", view)
+            for i in self.items:
+                i.plot(self.color, view)
 
         def add_entry(self, entry):
 
             self.items.append(entry)
 
             if self.covering:
-
-                self.covering.rm_plot()
                 self.covering = RTree.Bound.combine([self.covering, entry.bound])
-
-                if self.view:
-                    self.covering.plot("#009b00", self.view)
 
             else:
                 self.covering = entry.bound
-
-            if self.view:
-                entry.plot(self.color, self.view)
 
         def rm_entry(self, entry):
 
             for i in range(len(self.items)):
                 if entry == self.items[i]:
-
-                    # Remove index_entry, adjust leaf covering
-                    if self.view:
-                        entry.rm_plot()
 
                     self.items.pop(i)
                     self.update_bound(RTree.Bound.combine([j.bound for j in self.items]))
@@ -143,20 +105,7 @@ class RTree(object):
             return False
 
         def update_bound(self, bound):
-
-            self.covering.rm_plot()
             self.covering = bound
-
-            if self.view:
-                self.covering.plot("#009b00", self.view)
-
-        def rm_plot(self):
-
-            if self.view:
-                for i in self.items:
-                    i.rm_plot()
-
-                self.covering.rm_plot()
 
         def __str__(self):
             string = ""
@@ -174,7 +123,7 @@ class RTree(object):
     # Methods                                                                 #
     ###########################################################################
 
-    def __init__(self, M, dim, plotting=False):
+    def __init__(self, M, dim):
 
         self.max_num = M
         self.min_num = max(math.floor(M * .4), 1)
@@ -183,26 +132,28 @@ class RTree(object):
         self.p = max(min(math.floor(M * .3), 32), 1)
         self.dim = dim
 
-        self.plotting = plotting
-        self.view = None
-
-        if self.plotting:
-            if self.dim == 2:
-                pg.mkQApp("RTree")
-                self.view = pg.plot().getViewBox()
-
-            elif self.dim == 3:
-                pg.mkQApp("RTree")
-                self.view = gl.GLViewWidget()
-                self.view.show()
-
         if self.dim == 2:
             RTree.Bound = RTree.Rect
 
         elif self.dim == 3:
             RTree.Bound = RTree.Cube
 
-        self.root = RTree.LeafNode(items=[], covering=None, level=0, view=self.view)
+        self.root = RTree.LeafNode(items=[], covering=None, level=0)
+
+    def plot(self):
+        if self.dim == 2:
+            pg.mkQApp("RTree")
+            self.view = pg.plot().getViewBox()
+
+        elif self.dim == 3:
+            pg.mkQApp("RTree")
+            self.view = gl.GLViewWidget()
+            self.view.show()
+            mid = self.root.covering.center
+            self.view.setCameraPosition(distance=np.linalg.norm(mid))
+            self.view.pan(mid[0], mid[1], mid[2])
+
+        self.root.plot(self.view)
 
     def __str__(self):
         return "Root:\n" + textwrap.indent(f"{self.root}", "    ")
@@ -391,19 +342,18 @@ class RTree(object):
     def Split(self, node, lvl):
 
         self.ChooseSplitAxis(node)
-        node.rm_plot()
         l1, l2, b1, b2 = self.ChooseSplitIndex(node.items)
 
         if lvl == 0:
 
-            n1 = RTree.LeafNode(items=l1, covering=b1, level=lvl, view=self.view)
-            n2 = RTree.LeafNode(items=l2, covering=b2, level=lvl, view=self.view)
+            n1 = RTree.LeafNode(items=l1, covering=b1, level=lvl)
+            n2 = RTree.LeafNode(items=l2, covering=b2, level=lvl)
             return n1, n2
 
         else:
 
-            n1 = RTree.BranchNode(items=l1, covering=b1, level=lvl, view=self.view)
-            n2 = RTree.BranchNode(items=l2, covering=b2, level=lvl, view=self.view)
+            n1 = RTree.BranchNode(items=l1, covering=b1, level=lvl)
+            n2 = RTree.BranchNode(items=l2, covering=b2, level=lvl)
             return n1, n2
 
     def OverflowTreatment(self, node, level, overflow):
@@ -421,13 +371,9 @@ class RTree(object):
 
     def Reinsert(self, node):
 
-        node.rm_plot()
         sort_dist = sorted(node.items, key=lambda x: np.linalg.norm(node.covering.center - x.bound.center), reverse=True)
         node.items = sort_dist[self.p:]
         node.update_bound(RTree.Bound.combine([n.bound for n in node.items]))
-
-        if type(node) is RTree.LeafNode:
-            node.plot()
 
         return sort_dist[:self.p][::-1]
 
@@ -517,7 +463,6 @@ class RTree(object):
             self.root = RTree.BranchNode(items=[],
                                          covering=new_bound,
                                          level=self.height,
-                                         view=self.view,
                                          )
             self.root.add_entry(p1)
             self.root.add_entry(p2)
@@ -559,7 +504,6 @@ class RTree(object):
 
                                 q += child_node.items
                                 ins_lvl = child_node.level
-                                child_node.rm_plot()
                                 del node.items[i]
 
                             else:
@@ -589,10 +533,8 @@ class RTree(object):
             for i in range(len(items) - 1, 0, -1):
 
                 q += items[i].pointer.items
-                items[i].pointer.rm_plot()
                 del self.root.items[i]
 
-            self.root.rm_plot()
             self.root = items[0].pointer
             self.height -= 1
 

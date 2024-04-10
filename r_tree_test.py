@@ -10,7 +10,7 @@ from r_tree_utils import nCircle
 import matplotlib.pyplot as plt
 
 
-test = 2
+test = 3
 # np.random.seed(623)
 
 if test == 2:
@@ -177,30 +177,20 @@ elif test == 3:
         print('closest: ', closest)
 
 
-rtree = RTree(20, dim=test, plotting=True)
-p = test_insert(rtree, 500)
+rtree = RTree(20, dim=test)
+p = test_insert(rtree, 1500)
+rtree.plot()
 t_point = np.array([250, 250, 250])
 # found = test_search(rtree, nCircle(t_point, 200))
 # test_delete(rtree, found)
 # test_nearest(rtree, t_point)
 # test_nearest_naive(p, t_point)
 
-if test == 3:
-    rtree.view.setCameraPosition(distance=400)
-    rtree.view.pan(400, 400, 400)
 
 pg.exec()
 
 
 print("Done!")
-
-
-
-
-
-
-
-
 
 
 
